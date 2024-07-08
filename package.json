@@ -1,0 +1,26 @@
+{
+  "name": "json-editor",
+  "version": "0.0.1",
+  "description": "json editor",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "node src/main.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/jorgesanfz/json-editor.git"
+  },
+  "keywords": [
+    "json",
+    "editor"
+  ],
+  "author": "jorgesanfz",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jorgesanfz/json-editor/issues"
+  },
+  "homepage": "https://github.com/jorgesanfz/json-editor#readme"
+}
