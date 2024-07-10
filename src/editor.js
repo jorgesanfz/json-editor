@@ -4,6 +4,7 @@ class Editor {
     this.styleJson = styleJson; // Store the style JSON
     document.body.appendChild(this.editorDiv);
     console.log("Editor initialized");
+    this.html = "";
   }
 
   setJson(json) {
@@ -20,8 +21,8 @@ class Editor {
     });
     return json;
   }
+
   build(json, prefix = "", recursionIdentifier = 0) {
-    let html = "";
     console.log(
       "Building JSON Editor at recursion level:",
       recursionIdentifier
@@ -29,38 +30,47 @@ class Editor {
     Object.keys(json).forEach((key) => {
       const fullKey = prefix ? `${prefix}[${key}]` : key;
       if (Array.isArray(json[key])) {
-        html += `<div style="margin-left: ${
-          recursionIdentifier * 20
-        }px"><b>${key}</b>: <div>`;
-        json[key].forEach((item, index) => {
-          const itemKey = `${fullKey}[${index}]`;
-          if (typeof item === "object" && item !== null) {
-            // Increment or update the recursion identifier for subobjects
-            html += `<div>${this.build(
-              item,
-              itemKey,
-              recursionIdentifier + 1
-            )}</div>`;
-          } else {
-            html += `<div><input data-key="${itemKey}" value="${item}"></div>`;
-          }
-        });
-        html += `</div></div>`;
+        this.buildArray(json[key], key, fullKey, recursionIdentifier);
       } else if (typeof json[key] === "object" && json[key] !== null) {
-        // Handle objects similarly, incrementing or updating the recursion identifier
-        html += `<div style="margin-left: ${
-          recursionIdentifier * 20
-        }px">${key}: ${this.build(
-          json[key],
-          fullKey,
-          recursionIdentifier + 1
-        )}</div>`;
+        this.buildObject(json[key], key, fullKey, recursionIdentifier);
       } else {
-        // For primitive types, just create an input element
-        html += `<div><label for="${fullKey}">${key}:</label><input id="${fullKey}" data-key="${fullKey}" value="${json[key]}"></div>`;
+        this.buildPrimitive(json[key], key, fullKey);
       }
     });
-    return html;
+    return this.html;
+  }
+
+  buildArray(array, key, fullKey, recursionIdentifier) {
+    this.html += `<div style="margin-left: ${
+      recursionIdentifier * 20
+    }px"><b>${key}</b>: <div>`;
+    array.forEach((item, index) => {
+      this.buildSubobjects(item, index, fullKey, recursionIdentifier + 1);
+    });
+    this.html += `</div></div>`;
+  }
+
+  buildObject(object, key, fullKey, recursionIdentifier) {
+    this.html += `<div style="margin-left: ${
+      recursionIdentifier * 20
+    }px">${key}: ${this.build(object, fullKey, recursionIdentifier + 1)}</div>`;
+  }
+
+  buildPrimitive(value, key, fullKey) {
+    this.html += `<div><label for="${fullKey}">${key}:</label><input id="${fullKey}" data-key="${fullKey}" value="${value}"></div>`;
+  }
+
+  buildSubobjects(item, index, fullKey, recursionIdentifier) {
+    const itemKey = `${fullKey}[${index}]`;
+    if (typeof item === "object" && item !== null) {
+      this.html += `<div>${this.build(
+        item,
+        itemKey,
+        recursionIdentifier + 1
+      )}</div>`;
+    } else {
+      this.html += `<div><input data-key="${itemKey}" value="${item}"></div>`;
+    }
   }
 
   clearEditor() {
