@@ -3,14 +3,35 @@ class Editor {
     this.editorDiv = document.createElement("div");
     this.styleJson = styleJson;
     document.body.appendChild(this.editorDiv);
-    console.log("Editor initialized");
     this.html = "";
+
+    const defaultStyle = document.createElement("style");
+    defaultStyle.innerHTML = `
+      .indentation-0 { margin-left: 0; }
+      .indentation-1 { margin-left: 20px; }
+      .indentation-2 { margin-left: 40px; }
+      .indentation-3 { margin-left: 60px; }
+      .indentation-4 { margin-left: 80px; }
+      div {
+        width: 60%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-radius: 5px;
+      /* 
+        padding: 20px;
+      border: 1px solid black;
+      align-items: center;
+      */
+      }
+    `;
+    document.head.appendChild(defaultStyle);
   }
 
   setJson(json) {
-    console.log("Setting JSON");
-    this.html = "";
-    this.editorDiv.innerHTML = this.build(json);
+    this.editorDiv.innerHTML = "";
+    const content = this.build(json);
+    this.editorDiv.appendChild(content);
   }
 
   getJson() {
@@ -24,69 +45,111 @@ class Editor {
   }
 
   build(json, prefix = "", recursionIdentifier = 0) {
-    console.log(
-      "Building JSON Editor at recursion level:",
-      recursionIdentifier
-    );
+    const fragment = document.createDocumentFragment();
     Object.keys(json).forEach((key) => {
       const fullKey = prefix ? `${prefix}[${key}]` : key;
+      const container = document.createElement("div");
+      container.classList.add("indentation-" + recursionIdentifier);
+
+      const keyContainer = document.createElement("span");
+      keyContainer.innerHTML = `<b>${this.sanitizeHTML(key)}</b>: `;
+      container.appendChild(keyContainer);
+
+      const uniqueId = `element-${fullKey.replace(/[\[\].]/g, "")}`;
+      const toggleButton = document.createElement("button");
+      toggleButton.textContent = "Toggle";
+      toggleButton.onclick = () => Editor.debounceToggleVisibility(uniqueId);
+      keyContainer.appendChild(toggleButton);
+
+      const contentContainer = document.createElement("div");
+      contentContainer.id = uniqueId;
+      contentContainer.style.display = "block";
+
       if (Array.isArray(json[key])) {
-        this.buildArray(json[key], key, fullKey, recursionIdentifier);
+        this.buildArray(
+          json[key],
+          fullKey,
+          recursionIdentifier,
+          contentContainer
+        );
       } else if (typeof json[key] === "object" && json[key] !== null) {
-        this.buildObject(json[key], key, fullKey, recursionIdentifier);
+        this.buildObject(
+          json[key],
+          fullKey,
+          recursionIdentifier,
+          contentContainer
+        );
       } else {
-        this.buildPrimitive(json[key], key, fullKey);
+        this.buildPrimitive(json[key], fullKey, contentContainer);
       }
+
+      container.appendChild(contentContainer);
+      fragment.appendChild(container);
     });
-    return this.html;
+
+    return fragment;
   }
 
-  buildArray(array, key, fullKey, recursionIdentifier) {
-    const uniqueId = `array-${fullKey.replace(/[\[\].]/g, "")}`;
-    this.html += `<div style="margin-left: ${recursionIdentifier * 20}px">
-                  <b>${key}</b>: 
-                  <button onclick="Editor.toggleVisibility('${uniqueId}')">Toggle</button>
-                  <div id="${uniqueId}" style="display: block;">`;
+  buildArray(array, fullKey, recursionIdentifier, container) {
     array.forEach((item, index) => {
-      this.buildSubobjects(item, index, fullKey, recursionIdentifier + 1);
+      const itemContainer = document.createElement("div");
+      this.buildSubobjects(
+        item,
+        index,
+        fullKey,
+        recursionIdentifier + 1,
+        itemContainer
+      );
+      container.appendChild(itemContainer);
     });
-    this.html += `</div></div>`;
   }
 
-  buildObject(object, key, fullKey, recursionIdentifier) {
-    this.html += `<div style="margin-left: ${
-      recursionIdentifier * 20
-    }px">${key}: ${this.build(object, fullKey, recursionIdentifier + 1)}</div>`;
+  buildObject(object, fullKey, recursionIdentifier, container) {
+    const objectContainer = this.build(
+      object,
+      fullKey,
+      recursionIdentifier + 1
+    );
+    container.appendChild(objectContainer);
   }
 
-  buildPrimitive(value, key, fullKey) {
-    this.html += `<div><label for="${fullKey}">${key}:</label><input id="${fullKey}"
-    data-key="${fullKey}" value="${value}"></div>`;
+  buildPrimitive(value, fullKey, container) {
+    container.innerHTML = `
+      <input id="${fullKey}" data-key="${fullKey}" value="${this.sanitizeHTML(
+      value
+    )}">
+    `;
   }
 
-  buildSubobjects(item, index, fullKey, recursionIdentifier) {
+  buildSubobjects(item, index, fullKey, recursionIdentifier, container) {
     const itemKey = `${fullKey}[${index}]`;
     if (typeof item === "object" && item !== null) {
-      this.html += `<div>${this.build(
-        item,
-        itemKey,
-        recursionIdentifier + 1
-      )}</div>`;
+      const subObjectContainer = this.build(item, itemKey, recursionIdentifier);
+      container.appendChild(subObjectContainer);
     } else {
-      this.html += `<div><input data-key="${itemKey}" value="${item}"></div>`;
+      container.innerHTML = `<input data-key="${itemKey}" value="${this.sanitizeHTML(
+        item
+      )}">`;
+    }
+  }
+
+  applyStyles(element, key) {
+    if (this.styleJson[key]) {
+      const styles = this.styleJson[key];
+      Object.keys(styles).forEach((styleKey) => {
+        element.style[styleKey] = styles[styleKey];
+      });
     }
   }
 
   clearEditor() {
     this.editorDiv.innerHTML = "";
-    console.log("Editor cleared");
   }
 
   updateJson(newJson) {
     const currentJson = this.getJson();
     const mergedJson = { ...currentJson, ...newJson };
     this.setJson(mergedJson);
-    console.log("JSON updated");
   }
 
   static toggleVisibility(elementId) {
@@ -96,6 +159,22 @@ class Editor {
     } else {
       element.style.display = "none";
     }
+  }
+
+  static debounce(func, wait = 300) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
+
+  static debounceToggleVisibility = Editor.debounce(Editor.toggleVisibility);
+
+  sanitizeHTML(str) {
+    const temp = document.createElement("div");
+    temp.textContent = str;
+    return temp.innerHTML;
   }
 }
 
