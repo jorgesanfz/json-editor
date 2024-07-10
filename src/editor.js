@@ -1,7 +1,7 @@
 class Editor {
   constructor(styleJson = {}) {
     this.editorDiv = document.createElement("div");
-    this.styleJson = styleJson; // Store the style JSON
+    this.styleJson = styleJson;
     document.body.appendChild(this.editorDiv);
     console.log("Editor initialized");
     this.html = "";
@@ -9,6 +9,7 @@ class Editor {
 
   setJson(json) {
     console.log("Setting JSON");
+    this.html = "";
     this.editorDiv.innerHTML = this.build(json);
   }
 
@@ -41,9 +42,11 @@ class Editor {
   }
 
   buildArray(array, key, fullKey, recursionIdentifier) {
-    this.html += `<div style="margin-left: ${
-      recursionIdentifier * 20
-    }px"><b>${key}</b>: <div>`;
+    const uniqueId = `array-${fullKey.replace(/[\[\].]/g, "")}`;
+    this.html += `<div style="margin-left: ${recursionIdentifier * 20}px">
+                  <b>${key}</b>: 
+                  <button onclick="Editor.toggleVisibility('${uniqueId}')">Toggle</button>
+                  <div id="${uniqueId}" style="display: block;">`;
     array.forEach((item, index) => {
       this.buildSubobjects(item, index, fullKey, recursionIdentifier + 1);
     });
@@ -57,7 +60,8 @@ class Editor {
   }
 
   buildPrimitive(value, key, fullKey) {
-    this.html += `<div><label for="${fullKey}">${key}:</label><input id="${fullKey}" data-key="${fullKey}" value="${value}"></div>`;
+    this.html += `<div><label for="${fullKey}">${key}:</label><input id="${fullKey}"
+    data-key="${fullKey}" value="${value}"></div>`;
   }
 
   buildSubobjects(item, index, fullKey, recursionIdentifier) {
@@ -84,6 +88,17 @@ class Editor {
     this.setJson(mergedJson);
     console.log("JSON updated");
   }
+
+  static toggleVisibility(elementId) {
+    const element = document.getElementById(elementId);
+    if (element.style.display === "none") {
+      element.style.display = "block";
+    } else {
+      element.style.display = "none";
+    }
+  }
 }
+
+window.Editor = Editor;
 
 export { Editor };
