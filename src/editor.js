@@ -5,27 +5,95 @@ class Editor {
     document.body.appendChild(this.editorDiv);
     this.html = "";
 
-    const defaultStyle = document.createElement("style");
-    defaultStyle.innerHTML = `
-      .indentation-0 { margin-left: 0; }
-      .indentation-1 { margin-left: 20px; }
-      .indentation-2 { margin-left: 40px; }
-      .indentation-3 { margin-left: 60px; }
-      .indentation-4 { margin-left: 80px; }
-      div {
-        width: 60%;
+    const maxIndentationLevels = 10;
+    let indentationStyles = "";
+    for (let i = 0; i <= maxIndentationLevels; i++) {
+      indentationStyles += `.indentation-${i} { margin-left: ${i * 20}px; }\n`;
+    }
+
+    this.defaultCss = `
+      .editor-container {
+        width: 100%;
+        max-width: 800px;
+        margin: 20px auto;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        color: #333;
+      }
+
+      .editor-container div {
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        border-radius: 5px;
-      /* 
-        padding: 20px;
-      border: 1px solid black;
-      align-items: center;
-      */
+        margin-bottom: 10px;
+      }
+
+      .editor-container b {
+        margin-right: 5px;
+        font-weight: normal;
+      }
+
+      .editor-container input {
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        font-size: 14px;
+        width: 100%;
+      }
+
+      .editor-container button {
+        padding: 5px 10px;
+        background-color: #007bff;
+        border: none;
+        border-radius: 3px;
+        color: white;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 5px;
+      }
+
+      .editor-container button:hover {
+        background-color: #0056b3;
+      }
+
+      ${indentationStyles} // Insert generated indentation styles here
+
+      .json-output {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #f9f9f9;
+        white-space: pre-wrap;
+        font-family: monospace; /* Match the style */
+        width: 100%; /* Ensure it matches the editor width */
+      }
+
+      .json-output {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        background-color: #f9f9f9;
+        white-space: pre-wrap;
+        font-family: monospace; /* Match the style */
+        width: 50%; /* Ensure it matches the editor width */
       }
     `;
+
+    const defaultStyle = document.createElement("style");
+    defaultStyle.innerHTML = this.defaultCss;
     document.head.appendChild(defaultStyle);
+
+    this.editorDiv.classList.add("editor-container");
+
+    const getJsonButton = document.createElement("button");
+    getJsonButton.textContent = "Get JSON";
+    getJsonButton.onclick = () => this.displayJson();
+    document.body.appendChild(getJsonButton);
+
+    this.jsonOutputDiv = document.createElement("div");
+    this.jsonOutputDiv.classList.add("json-output");
+    document.body.appendChild(this.jsonOutputDiv);
   }
 
   setJson(json) {
@@ -37,10 +105,27 @@ class Editor {
   getJson() {
     const inputs = this.editorDiv.querySelectorAll("input");
     const json = {};
+
     inputs.forEach((input) => {
       const key = input.getAttribute("data-key");
-      json[key] = input.value;
+      const value = input.value;
+
+      const parts = key.split(/[\[\]]+/).filter(Boolean);
+
+      let current = json;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (i === parts.length - 1) {
+          current[part] = value;
+        } else {
+          if (!current[part]) {
+            current[part] = isNaN(parts[i + 1]) ? {} : [];
+          }
+          current = current[part];
+        }
+      }
     });
+
     return json;
   }
 
@@ -51,14 +136,18 @@ class Editor {
       const container = document.createElement("div");
       container.classList.add("indentation-" + recursionIdentifier);
 
+      this.applyStyles(container, key);
+
       const keyContainer = document.createElement("span");
       keyContainer.innerHTML = `<b>${this.sanitizeHTML(key)}</b>: `;
       container.appendChild(keyContainer);
 
       const uniqueId = `element-${fullKey.replace(/[\[\].]/g, "")}`;
       const toggleButton = document.createElement("button");
-      toggleButton.textContent = "Toggle";
-      toggleButton.onclick = () => Editor.debounceToggleVisibility(uniqueId);
+      toggleButton.textContent = "-";
+      toggleButton.onclick = () => {
+        Editor.toggleVisibility(uniqueId, toggleButton);
+      };
       keyContainer.appendChild(toggleButton);
 
       const contentContainer = document.createElement("div");
@@ -152,12 +241,14 @@ class Editor {
     this.setJson(mergedJson);
   }
 
-  static toggleVisibility(elementId) {
+  static toggleVisibility(elementId, button) {
     const element = document.getElementById(elementId);
     if (element.style.display === "none") {
       element.style.display = "block";
+      button.textContent = "-";
     } else {
       element.style.display = "none";
+      button.textContent = "+";
     }
   }
 
@@ -175,6 +266,11 @@ class Editor {
     const temp = document.createElement("div");
     temp.textContent = str;
     return temp.innerHTML;
+  }
+
+  displayJson() {
+    const json = this.getJson();
+    this.jsonOutputDiv.textContent = JSON.stringify(json, null, 2);
   }
 }
 
