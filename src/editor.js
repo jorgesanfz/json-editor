@@ -1,8 +1,13 @@
 class Editor {
-  constructor(styleJson = {}, onSave = () => console.log(this.getJson())) {
+  constructor(
+    styleJson = {},
+    onSave = () => console.log(this.getJson()),
+    displayOutput = true
+  ) {
     this.editorDiv = document.createElement("div");
     this.styleJson = styleJson;
     this.onSave = onSave;
+    this.displayOutput = displayOutput;
     document.body.appendChild(this.editorDiv);
     this.html = "";
 
@@ -62,7 +67,11 @@ class Editor {
         background-color: #0056b3;
       }
 
-      ${indentationStyles}
+      .add-buttons {
+        display: flex;
+        gap: 5px;
+        margin-top: 10px;
+      }
 
       .json-output {
         margin-top: 20px;
@@ -92,18 +101,20 @@ class Editor {
     getJsonButton.onclick = () => this.displayJson();
     buttonContainer.appendChild(getJsonButton);
 
-    //if (this.onSave) {
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save JSON";
-    saveButton.onclick = () => this.onSave(this.getJson());
-    buttonContainer.appendChild(saveButton);
-    //}
+    if (this.onSave) {
+      const saveButton = document.createElement("button");
+      saveButton.textContent = "Save JSON";
+      saveButton.onclick = () => this.onSave(this.getJson());
+      buttonContainer.appendChild(saveButton);
+    }
 
     document.body.appendChild(buttonContainer);
 
-    this.jsonOutputDiv = document.createElement("div");
-    this.jsonOutputDiv.classList.add("json-output");
-    document.body.appendChild(this.jsonOutputDiv);
+    if (this.displayOutput) {
+      this.jsonOutputDiv = document.createElement("div");
+      this.jsonOutputDiv.classList.add("json-output");
+      document.body.appendChild(this.jsonOutputDiv);
+    }
   }
 
   setJson(json) {
@@ -184,6 +195,10 @@ class Editor {
 
       container.appendChild(contentContainer);
       fragment.appendChild(container);
+
+      // Add the buttons to add new fields, objects, or arrays
+      const addButtons = this.createAddButtons(fullKey, recursionIdentifier);
+      container.appendChild(addButtons);
     });
 
     return fragment;
@@ -229,6 +244,89 @@ class Editor {
       container.innerHTML = `<input data-key="${itemKey}" value="${this.sanitizeHTML(
         item
       )}">`;
+    }
+  }
+
+  createAddButtons(prefix, recursionIdentifier) {
+    const buttonContainer = document.createElement("div");
+    buttonContainer.classList.add("add-buttons");
+
+    const addFieldButton = document.createElement("button");
+    addFieldButton.textContent = "Add Field";
+    addFieldButton.onclick = () => this.addField(prefix, recursionIdentifier);
+    buttonContainer.appendChild(addFieldButton);
+
+    const addObjectButton = document.createElement("button");
+    addObjectButton.textContent = "Add Object";
+    addObjectButton.onclick = () => this.addObject(prefix, recursionIdentifier);
+    buttonContainer.appendChild(addObjectButton);
+
+    const addArrayButton = document.createElement("button");
+    addArrayButton.textContent = "Add Array";
+    addArrayButton.onclick = () => this.addArray(prefix, recursionIdentifier);
+    buttonContainer.appendChild(addArrayButton);
+
+    return buttonContainer;
+  }
+
+  addField(prefix, recursionIdentifier) {
+    const key = prompt("Enter the field name:");
+    if (key) {
+      const value = prompt("Enter the field value:");
+      const json = this.getJson();
+      const parts = prefix.split(/[\[\]]+/).filter(Boolean);
+
+      let current = json;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (i === parts.length - 1) {
+          current[part][key] = value;
+        } else {
+          current = current[part];
+        }
+      }
+
+      this.setJson(json);
+    }
+  }
+
+  addObject(prefix, recursionIdentifier) {
+    const key = prompt("Enter the object name:");
+    if (key) {
+      const json = this.getJson();
+      const parts = prefix.split(/[\[\]]+/).filter(Boolean);
+
+      let current = json;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (i === parts.length - 1) {
+          current[part][key] = {};
+        } else {
+          current = current[part];
+        }
+      }
+
+      this.setJson(json);
+    }
+  }
+
+  addArray(prefix, recursionIdentifier) {
+    const key = prompt("Enter the array name:");
+    if (key) {
+      const json = this.getJson();
+      const parts = prefix.split(/[\[\]]+/).filter(Boolean);
+
+      let current = json;
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (i === parts.length - 1) {
+          current[part][key] = [];
+        } else {
+          current = current[part];
+        }
+      }
+
+      this.setJson(json);
     }
   }
 
@@ -280,7 +378,12 @@ class Editor {
 
   displayJson() {
     const json = this.getJson();
-    this.jsonOutputDiv.textContent = JSON.stringify(json, null, 2);
+    if (this.displayOutput) {
+      this.jsonOutputDiv.textContent = JSON.stringify(json, null, 2);
+    }
+    if (this.onSave) {
+      this.onSave(json);
+    }
   }
 }
 
