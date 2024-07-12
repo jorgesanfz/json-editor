@@ -1,7 +1,8 @@
 class Editor {
-  constructor(styleJson = {}) {
+  constructor(styleJson = {}, onSave = () => console.log(this.getJson())) {
     this.editorDiv = document.createElement("div");
     this.styleJson = styleJson;
+    this.onSave = onSave;
     document.body.appendChild(this.editorDiv);
     this.html = "";
 
@@ -40,6 +41,13 @@ class Editor {
         width: 100%;
       }
 
+      .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 20px 0;
+      }
+
       .editor-container button {
         padding: 5px 10px;
         background-color: #007bff;
@@ -48,14 +56,13 @@ class Editor {
         color: white;
         cursor: pointer;
         font-size: 14px;
-        margin-left: 5px;
       }
 
       .editor-container button:hover {
         background-color: #0056b3;
       }
 
-      ${indentationStyles} // Insert generated indentation styles here
+      ${indentationStyles}
 
       .json-output {
         margin-top: 20px;
@@ -64,19 +71,10 @@ class Editor {
         border-radius: 3px;
         background-color: #f9f9f9;
         white-space: pre-wrap;
-        font-family: monospace; /* Match the style */
-        width: 100%; /* Ensure it matches the editor width */
-      }
-
-      .json-output {
-        margin-top: 20px;
-        padding: 10px;
-        border: 1px solid #ccc;
-        border-radius: 3px;
-        background-color: #f9f9f9;
-        white-space: pre-wrap;
-        font-family: monospace; /* Match the style */
-        width: 50%; /* Ensure it matches the editor width */
+        font-family: monospace;
+        width: 100%;
+        max-width: 800px;
+        margin: 20px auto;
       }
     `;
 
@@ -86,10 +84,22 @@ class Editor {
 
     this.editorDiv.classList.add("editor-container");
 
+    const buttonContainer = document.createElement("div");
+    buttonContainer.classList.add("button-container");
+
     const getJsonButton = document.createElement("button");
     getJsonButton.textContent = "Get JSON";
     getJsonButton.onclick = () => this.displayJson();
-    document.body.appendChild(getJsonButton);
+    buttonContainer.appendChild(getJsonButton);
+
+    //if (this.onSave) {
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save JSON";
+    saveButton.onclick = () => this.onSave(this.getJson());
+    buttonContainer.appendChild(saveButton);
+    //}
+
+    document.body.appendChild(buttonContainer);
 
     this.jsonOutputDiv = document.createElement("div");
     this.jsonOutputDiv.classList.add("json-output");
